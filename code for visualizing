@@ -1,0 +1,64 @@
+from google.colab import files
+uploaded = files.upload()
+
+# 📌 STEP 2: Import Libraries
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import re
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.model_selection import train_test_split
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import classification_report, ConfusionMatrixDisplay
+
+# 📌 STEP 3: Load and Clean Dataset
+df = pd.read_csv('twitter_training.csv', header=None)
+df.columns = ['ID', 'Topic', 'Sentiment', 'Tweet']
+df.dropna(subset=['Tweet'], inplace=True)
+df = df[df['Sentiment'].isin(['Positive', 'Negative', 'Neutral'])]  # Remove "Irrelevant"
+
+# 📌 STEP 4: Visualize Sentiment Distribution
+plt.figure(figsize=(8,5))
+sns.countplot(data=df, x='Sentiment', palette='coolwarm')
+plt.title("Sentiment Distribution in Tweets", fontsize=14)
+plt.xlabel("Sentiment")
+plt.ylabel("Number of Tweets")
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+plt.show()
+
+# 📌 STEP 5: Clean the Tweets
+def clean_text(text):
+    text = re.sub(r"http\S+|www\S+|https\S+", '', text)      # Remove URLs
+    text = re.sub(r'@\w+|\#\w+', '', text)                   # Remove mentions/hashtags
+    text = re.sub(r'[^A-Za-z0-9 ]+', '', text)               # Remove special characters
+    return text.lower().strip()
+
+df['Clean_Tweet'] = df['Tweet'].apply(clean_text)
+
+# 📌 STEP 6: Vectorize the Text
+vectorizer = CountVectorizer(stop_words='english')
+X = vectorizer.fit_transform(df['Clean_Tweet'])
+y = df['Sentiment']
+
+# 📌 STEP 7: Train-Test Split
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# 📌 STEP 8: Train Naive Bayes Model
+model = MultinomialNB()
+model.fit(X_train, y_train)
+
+# 📌 STEP 9: Predict and Evaluate
+y_pred = model.predict(X_test)
+print("\n🔍 Classification Report:\n")
+print(classification_report(y_test, y_pred))
+
+# 📌 STEP 10: Visualize Confusion Matrix
+disp = ConfusionMatrixDisplay.from_estimator(
+    model, X_test, y_test,
+    display_labels=['Negative', 'Neutral', 'Positive'],
+    cmap='Blues',
+    values_format='d'
+)
+plt.title("Confusion Matrix")
+plt.grid(False)
+plt.show()
